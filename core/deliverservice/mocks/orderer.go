@@ -32,7 +32,7 @@ type Orderer struct {
 
 func NewOrderer(port int, t *testing.T) *Orderer {
 	srv := grpc.NewServer()
-	lsnr, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
+	lsnr, err := net.Listen("tcp", fmt.Sprintf("orderer:%d", port))
 	if err != nil {
 		panic(err)
 	}
