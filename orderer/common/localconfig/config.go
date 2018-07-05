@@ -134,6 +134,7 @@ type RAMLedger struct {
 type BFTsmart struct {
 	ConnectionPoolSize uint
 	RecvPort           uint
+	FrontEndHost       string
 }
 
 // Kafka contains configuration for the Kafka-based orderer.

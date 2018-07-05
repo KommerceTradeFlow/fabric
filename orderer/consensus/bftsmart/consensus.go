@@ -38,6 +38,7 @@ var logger = logging.MustGetLogger("orderer/bftsmart")
 var poolsize uint = 0
 var poolindex uint = 0
 var recvport uint = 0
+var frontEndHost string = "localhost"
 var sendProxy net.Conn
 var sendPool []net.Conn
 var mutex []*sync.Mutex
@@ -61,6 +62,7 @@ func New(config localconfig.BFTsmart) consensus.Consenter {
 
 	poolsize = config.ConnectionPoolSize
 	recvport = config.RecvPort
+	frontEndHost = config.FrontEndHost
 	return &consenter{
 		createSystemChannel: true,
 	}
@@ -125,7 +127,7 @@ func (ch *chain) Start() {
 
 	}
 
-	addr := fmt.Sprintf("localhost:%d", recvport)
+	addr := fmt.Sprintf("%s:%d", frontEndHost, recvport)
 	conn, err := net.Dial("tcp", addr)
 
 	if err != nil {

@@ -179,6 +179,7 @@ type Kafka struct {
 type BFTsmart struct {
 	ConnectionPoolSize uint
 	RecvPort           uint
+	FrontEndHost       string
 }
 
 var genesisDefaults = TopLevel{
