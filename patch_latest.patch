@@ -1,0 +1,132 @@
+diff --git a/common/tools/configtxgen/localconfig/config.go b/common/tools/configtxgen/localconfig/config.go
+index 3468ffb..9c75d4b 100644
+--- a/common/tools/configtxgen/localconfig/config.go
++++ b/common/tools/configtxgen/localconfig/config.go
+@@ -179,6 +179,7 @@ type Kafka struct {
+ type BFTsmart struct {
+ 	ConnectionPoolSize uint
+ 	RecvPort           uint
++	FrontEndHost       string
+ }
+ 
+ var genesisDefaults = TopLevel{
+diff --git a/core/deliverservice/mocks/orderer.go b/core/deliverservice/mocks/orderer.go
+index ffbd63d..c0b1e25 100644
+--- a/core/deliverservice/mocks/orderer.go
++++ b/core/deliverservice/mocks/orderer.go
+@@ -32,7 +32,7 @@ type Orderer struct {
+ 
+ func NewOrderer(port int, t *testing.T) *Orderer {
+ 	srv := grpc.NewServer()
+-	lsnr, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
++	lsnr, err := net.Listen("tcp", fmt.Sprintf("orderer:%d", port))
+ 	if err != nil {
+ 		panic(err)
+ 	}
+diff --git a/orderer/common/localconfig/config.go b/orderer/common/localconfig/config.go
+index 02c3413..33f6de3 100644
+--- a/orderer/common/localconfig/config.go
++++ b/orderer/common/localconfig/config.go
+@@ -134,6 +134,7 @@ type RAMLedger struct {
+ type BFTsmart struct {
+ 	ConnectionPoolSize uint
+ 	RecvPort           uint
++	FrontEndHost       string
+ }
+ 
+ // Kafka contains configuration for the Kafka-based orderer.
+diff --git a/orderer/consensus/bftsmart/consensus.go b/orderer/consensus/bftsmart/consensus.go
+index 504dcdb..fd890a0 100644
+--- a/orderer/consensus/bftsmart/consensus.go
++++ b/orderer/consensus/bftsmart/consensus.go
+@@ -38,6 +38,7 @@ var logger = logging.MustGetLogger("orderer/bftsmart")
+ var poolsize uint = 0
+ var poolindex uint = 0
+ var recvport uint = 0
++var frontEndHost string = "localhost"
+ var sendProxy net.Conn
+ var sendPool []net.Conn
+ var mutex []*sync.Mutex
+@@ -61,6 +62,7 @@ func New(config localconfig.BFTsmart) consensus.Consenter {
+ 
+ 	poolsize = config.ConnectionPoolSize
+ 	recvport = config.RecvPort
++	frontEndHost = config.FrontEndHost
+ 	return &consenter{
+ 		createSystemChannel: true,
+ 	}
+@@ -125,7 +127,7 @@ func (ch *chain) Start() {
+ 
+ 	}
+ 
+-	addr := fmt.Sprintf("localhost:%d", recvport)
++	addr := fmt.Sprintf("%s:%d", frontEndHost, recvport)
+ 	conn, err := net.Dial("tcp", addr)
+ 
+ 	if err != nil {
+diff --git a/sampleconfig/configtx.yaml b/sampleconfig/configtx.yaml
+index e5c3e39..7899016 100644
+--- a/sampleconfig/configtx.yaml
++++ b/sampleconfig/configtx.yaml
+@@ -287,7 +287,7 @@ Organizations:
+         # cross-org gossip communication. Note, this value is only encoded in
+         # the genesis block in the Application section context.
+         AnchorPeers:
+-            - Host: 127.0.0.1
++            - Host: peernode
+               Port: 7051
+ 
+ ################################################################################
+@@ -309,7 +309,7 @@ Orderer: &OrdererDefaults
+     # participation in ordering. 
+     # NOTE: In the solo case, this should be a one-item list.
+     Addresses:
+-        - 127.0.0.1:7050
++        - orderer:7050
+ 
+     # Batch Timeout: The amount of time to wait before creating a batch.
+     BatchTimeout: 2s
+diff --git a/sampleconfig/core.yaml b/sampleconfig/core.yaml
+index f8794ce..34f4127 100644
+--- a/sampleconfig/core.yaml
++++ b/sampleconfig/core.yaml
+@@ -65,7 +65,7 @@ logging:
+ peer:
+ 
+     # The Peer id is used for identifying this Peer instance.
+-    id: jdoe
++    id: bftsmart_fabric_peernode
+ 
+     # The networkId allows for logical seperation of networks
+     networkId: dev
+@@ -89,7 +89,7 @@ peer:
+     # in the same organization. For peers in other organization, see
+     # gossip.externalEndpoint for more info.
+     # When used as CLI config, this means the peer's endpoint to interact with
+-    address: 0.0.0.0:7051
++    address: peernode:7051
+ 
+     # Whether the Peer should programmatically determine its address
+     # This case is useful for docker containers.
+diff --git a/sampleconfig/orderer.yaml b/sampleconfig/orderer.yaml
+index ee3195b..aabae27 100644
+--- a/sampleconfig/orderer.yaml
++++ b/sampleconfig/orderer.yaml
+@@ -22,7 +22,7 @@ General:
+     LedgerType: ram
+ 
+     # Listen address: The IP on which to bind to listen.
+-    ListenAddress: 127.0.0.1
++    ListenAddress: 0.0.0.0
+ 
+     # Listen port: The port on which to bind to listen.
+     ListenPort: 7050
+@@ -263,6 +263,8 @@ BFTsmart:
+ 
+     # RecvPort: The localhost TCP port from which the java component sends blocks to the golang component.
+     RecvPort: 9999
++    
++    FrontEndHost: bftsmart_frontend
+ 
+ ################################################################################
+ #
